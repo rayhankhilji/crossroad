@@ -30,8 +30,10 @@ import {
   categorical,
   clamp,
   correlatedNormals,
+  createRng,
   exponential,
   logNormal,
+  mixSeed,
   normal,
   pareto,
   remap,
@@ -113,6 +115,16 @@ const EMPLOYER_STAGE_RISK: Record<string, number> = {
 export interface Modifiers {
   /** Multiplier applied once, at the moment of the decision. */
   incomeStepMultiplier: number;
+  /**
+   * Permanent multiplier on what the market will pay you.
+   *
+   * Distinct from `incomeStepMultiplier` in a way that matters: a negotiated
+   * rise is a fact about your current job and evaporates if you lose it, while
+   * a degree is a fact about you and survives. Anything that re-prices you
+   * against the market — re-entry after a break, recovery from a layoff —
+   * reads this and not the step multiplier.
+   */
+  salaryLevelMultiplier: number;
   /** Added to annual real income growth for the whole horizon. */
   incomeGrowthDelta: number;
   /** Added to annual career capital change. */
@@ -137,6 +149,8 @@ export interface Modifiers {
   wellbeingPersistent: number;
   /** Multiplier on the rate at which opportunities arrive. */
   opportunityMultiplier: number;
+  /** Multiplier on the size of the annual idiosyncratic income shock. */
+  incomeVolatilityMultiplier: number;
   /** One-off cash cost, paid at the decision. */
   upfrontCost: number;
   /** Fractional change in savings rate. */
@@ -151,11 +165,73 @@ export interface Modifiers {
   venture?: boolean;
   /** Enrol in education for this many years. */
   studyYears?: number;
+
+  /**
+   * Annual effects that stop when the episode does.
+   *
+   * Without this every temporary choice leaks forever: a nine-month sabbatical
+   * would keep paying out its stress relief and health gain for the entire
+   * fifteen-year horizon, and would end up looking like the best decision
+   * available to anyone. Channels that describe a *period* rather than a
+   * permanent change put their annual flows here.
+   */
+  transient: TransientModifiers;
+  /** How many years the transient block stays active. */
+  transientYears: number;
+}
+
+/** The subset of modifiers that can be time-limited: annual flows only. */
+export interface TransientModifiers {
+  incomeGrowthDelta: number;
+  careerCapitalDelta: number;
+  networkDelta: number;
+  stressDelta: number;
+  healthDelta: number;
+  hoursDelta: number;
+  separationDelta: number;
+  opportunityMultiplier: number;
+  layoffMultiplier: number;
+}
+
+function emptyTransient(): TransientModifiers {
+  return {
+    incomeGrowthDelta: 0,
+    careerCapitalDelta: 0,
+    networkDelta: 0,
+    stressDelta: 0,
+    healthDelta: 0,
+    hoursDelta: 0,
+    separationDelta: 0,
+    opportunityMultiplier: 1,
+    layoffMultiplier: 1,
+  };
+}
+
+/**
+ * Collapse the permanent and transient blocks into the values in force this
+ * year. Called once at the top of every step.
+ */
+export function effectiveModifiers(mods: Modifiers, year: number): Modifiers {
+  if (year > mods.transientYears) return mods;
+  const t = mods.transient;
+  return {
+    ...mods,
+    incomeGrowthDelta: mods.incomeGrowthDelta + t.incomeGrowthDelta,
+    careerCapitalDelta: mods.careerCapitalDelta + t.careerCapitalDelta,
+    networkDelta: mods.networkDelta + t.networkDelta,
+    stressDelta: mods.stressDelta + t.stressDelta,
+    healthDelta: mods.healthDelta + t.healthDelta,
+    hoursDelta: mods.hoursDelta + t.hoursDelta,
+    separationDelta: mods.separationDelta + t.separationDelta,
+    opportunityMultiplier: mods.opportunityMultiplier * t.opportunityMultiplier,
+    layoffMultiplier: mods.layoffMultiplier * t.layoffMultiplier,
+  };
 }
 
 export function emptyModifiers(): Modifiers {
   return {
     incomeStepMultiplier: 1,
+    salaryLevelMultiplier: 1,
     incomeGrowthDelta: 0,
     careerCapitalDelta: 0,
     networkDelta: 0,
@@ -168,13 +244,26 @@ export function emptyModifiers(): Modifiers {
     wellbeingShock: 0,
     wellbeingPersistent: 0,
     opportunityMultiplier: 1,
+    incomeVolatilityMultiplier: 1,
     upfrontCost: 0,
     savingsRateDelta: 0,
+    transient: emptyTransient(),
+    transientYears: 0,
   };
 }
 
-export function mergeModifiers(target: Modifiers, patch: Partial<Modifiers>): Modifiers {
+/**
+ * What a channel is allowed to return. Everything is optional, and the
+ * transient block is independently partial so a channel can scope a single
+ * flow to an episode without restating the other eight.
+ */
+export type ModifierPatch = Partial<Omit<Modifiers, 'transient'>> & {
+  transient?: Partial<TransientModifiers>;
+};
+
+export function mergeModifiers(target: Modifiers, patch: ModifierPatch): Modifiers {
   target.incomeStepMultiplier *= patch.incomeStepMultiplier ?? 1;
+  target.salaryLevelMultiplier *= patch.salaryLevelMultiplier ?? 1;
   target.incomeGrowthDelta += patch.incomeGrowthDelta ?? 0;
   target.careerCapitalDelta += patch.careerCapitalDelta ?? 0;
   target.networkDelta += patch.networkDelta ?? 0;
@@ -187,6 +276,7 @@ export function mergeModifiers(target: Modifiers, patch: Partial<Modifiers>): Mo
   target.wellbeingShock += patch.wellbeingShock ?? 0;
   target.wellbeingPersistent += patch.wellbeingPersistent ?? 0;
   target.opportunityMultiplier *= patch.opportunityMultiplier ?? 1;
+  target.incomeVolatilityMultiplier *= patch.incomeVolatilityMultiplier ?? 1;
   target.upfrontCost += patch.upfrontCost ?? 0;
   target.savingsRateDelta += patch.savingsRateDelta ?? 0;
   if (patch.mode) target.mode = patch.mode;
@@ -194,6 +284,23 @@ export function mergeModifiers(target: Modifiers, patch: Partial<Modifiers>): Mo
   if (patch.modeDurationYears !== undefined) target.modeDurationYears = patch.modeDurationYears;
   if (patch.venture) target.venture = true;
   if (patch.studyYears !== undefined) target.studyYears = patch.studyYears;
+  if (patch.transient) {
+    const t = target.transient;
+    const p = patch.transient;
+    t.incomeGrowthDelta += p.incomeGrowthDelta ?? 0;
+    t.careerCapitalDelta += p.careerCapitalDelta ?? 0;
+    t.networkDelta += p.networkDelta ?? 0;
+    t.stressDelta += p.stressDelta ?? 0;
+    t.healthDelta += p.healthDelta ?? 0;
+    t.hoursDelta += p.hoursDelta ?? 0;
+    t.separationDelta += p.separationDelta ?? 0;
+    t.opportunityMultiplier *= p.opportunityMultiplier ?? 1;
+    t.layoffMultiplier *= p.layoffMultiplier ?? 1;
+  }
+  // The window is the longest any contributing channel asked for.
+  if (patch.transientYears !== undefined) {
+    target.transientYears = Math.max(target.transientYears, patch.transientYears);
+  }
   return target;
 }
 
@@ -562,17 +669,61 @@ export function wellbeingBreakdown(
 // The per-year step
 // ---------------------------------------------------------------------------
 
+/**
+ * Independent random streams, one per process.
+ *
+ * This is the mechanism behind honest counterfactuals. If a single generator
+ * fed the whole simulation, the "stay" and "quit" branches would immediately
+ * fall out of step — quitting consumes a different number of draws, so from
+ * that point on the two branches would live in different worlds, with
+ * different market crashes and different illnesses. The difference between
+ * them would then be mostly noise.
+ *
+ * With one stream per process, run #4,217 of the stay branch and run #4,217
+ * of the quit branch see *the same* sequence of economic conditions, the same
+ * market returns and the same health draws. What differs between them is the
+ * decision and nothing else. That is what lets a difference of two averages
+ * be read as an effect rather than as sampling error, and it cuts the standard
+ * error on the reported deltas by roughly an order of magnitude.
+ */
+export interface Streams {
+  econ: Rng;
+  market: Rng;
+  income: Rng;
+  career: Rng;
+  health: Rng;
+  rel: Rng;
+  venture: Rng;
+  misc: Rng;
+  /** Used once at setup, for trait uncertainty. */
+  traits: Rng;
+}
+
+const STREAM_NAMES = ['econ', 'market', 'income', 'career', 'health', 'rel', 'venture', 'misc', 'traits'] as const;
+
+/** Build the full set of streams for one run from a single run seed. */
+export function makeStreams(runSeed: number): Streams {
+  const out = {} as Streams;
+  STREAM_NAMES.forEach((name, i) => {
+    out[name] = createRng(mixSeed(runSeed, i * 7919 + 13));
+  });
+  return out;
+}
+
 /** Mutable bookkeeping that lives alongside the state for one simulated life. */
 export interface SimContext {
   traits: TraitVector;
   params: AssumptionValues;
   mods: Modifiers;
+  streams: Streams;
   /** AR(1) macroeconomic latent, roughly in [-2.5, 2.5]. */
   economy: number;
   /** Transient wellbeing shocks, decaying. */
   shockStock: number;
   /** Years since the last relocation. */
   yearsSinceMove: number;
+  /** Last year's net household income, for the lifestyle-inflation ratchet. */
+  previousNet: number;
   /** Age of the youngest child, or 99. */
   youngestChild: number;
   /** Years remaining in a temporary mode (sabbatical, study, venture). */
@@ -604,20 +755,24 @@ export function createContext(
   traits: TraitVector,
   params: AssumptionValues,
   mods: Modifiers,
-  rng: Rng,
+  streams: Streams,
 ): SimContext {
   return {
     traits,
     params,
     mods,
-    economy: normal(rng, 0, 1),
+    streams,
+    economy: normal(streams.econ, 0, 1),
     shockStock: mods.wellbeingShock,
     yearsSinceMove: mods.locationId ? 0 : 99,
+    previousNet: 0,
     youngestChild: 99,
     modeYearsLeft: mods.modeDurationYears ?? 0,
     jobSearchYears: 0,
     involuntary: false,
-    venture: mods.venture ? { yearsRunning: 0, resolved: false, quality: normal(rng, 0, 1) } : undefined,
+    venture: mods.venture
+      ? { yearsRunning: 0, resolved: false, quality: normal(streams.venture, 0, 1) }
+      : undefined,
     hours: traits.baseHours + mods.hoursDelta,
     savingsRate: clamp(traits.baseSavingsRate + mods.savingsRateDelta, 0, 0.9),
     wellbeingIntegral: 0,
@@ -647,6 +802,11 @@ export function applyImmediate(s: SimState, ctx: SimContext): void {
   }
   s.spend *= m.spendMultiplier;
   s.runwayMonths = runway(s);
+  // Seed the lifestyle ratchet with where the household actually starts, so
+  // the first simulated year does not read as one enormous pay rise.
+  const loc = getLocation(s.locationId);
+  ctx.previousNet =
+    afterTax(s.income * (1 - ctx.traits.pensionRate), loc.costIndex) + afterTax(s.partnerIncome, loc.costIndex);
 }
 
 function log(ctx: SimContext, t: number, kind: SimEvent['kind'], label: string, magnitude?: number): void {
@@ -661,29 +821,31 @@ function log(ctx: SimContext, t: number, kind: SimEvent['kind'], label: string, 
  * the slow stocks (career capital, health), then flows (income, wealth), then
  * wellbeing last, since it reads everything else.
  */
-export function step(s: SimState, ctx: SimContext, rng: Rng): void {
-  const { params, traits, mods } = ctx;
+export function step(s: SimState, ctx: SimContext): void {
+  const { params, traits, streams: S } = ctx;
   const luck = params['model.luckWeight'];
   const loc = getLocation(s.locationId);
 
   s.t += 1;
   s.age += 1;
+  // Resolve which modifiers are in force this year before anything reads them.
+  const mods = effectiveModifiers(ctx.mods, s.t);
   s.yearsInMode += 1;
   ctx.yearsSinceMove += 1;
   if (ctx.youngestChild < 99) ctx.youngestChild += 1;
 
   // -- 1. Macroeconomy -----------------------------------------------------
   const rho = params['model.economyPersistence'];
-  ctx.economy = rho * ctx.economy + Math.sqrt(Math.max(0, 1 - rho * rho)) * normal(rng, 0, 1);
+  ctx.economy = rho * ctx.economy + Math.sqrt(Math.max(0, 1 - rho * rho)) * normal(S.econ, 0, 1);
   const econ = clamp(ctx.economy, -3, 3);
 
   // -- 2. Investment returns ----------------------------------------------
   // Returns co-move with the economy, which is what makes a downturn hit your
   // portfolio and your job security in the same year.
-  const [zMarket] = correlatedNormals(rng, 0.35);
+  const [zMarket] = correlatedNormals(S.market, 0.35);
   let realReturn = params['wealth.realReturn'] + params['wealth.returnVolatility'] * (0.55 * econ * 0.4 + zMarket * 0.9);
-  if (bernoulli(rng, params['wealth.crashProbability'] * (econ < -0.5 ? 1.9 : 1))) {
-    const depth = uniform(rng, 0.25, 0.48);
+  if (bernoulli(S.market, params['wealth.crashProbability'] * (econ < -0.5 ? 1.9 : 1))) {
+    const depth = uniform(S.market, 0.25, 0.48);
     realReturn = -depth;
     log(ctx, s.t, 'market-crash', `Markets fell ${Math.round(depth * 100)}%`, -depth);
   } else if (realReturn > 0.3) {
@@ -692,13 +854,16 @@ export function step(s: SimState, ctx: SimContext, rng: Rng): void {
 
   // -- 3. Mode transitions -------------------------------------------------
   if (ctx.modeYearsLeft > 0) {
-    ctx.modeYearsLeft -= 1;
-    if (ctx.modeYearsLeft === 0 && s.mode !== 'employed' && !ctx.venture) {
+    // Decrement with a floor rather than testing for exact zero: durations can
+    // be fractional (a six-month retraining stint is 0.5), and an equality
+    // test would let those modes run forever.
+    ctx.modeYearsLeft = Math.max(0, ctx.modeYearsLeft - 1);
+    if (ctx.modeYearsLeft <= 0 && s.mode !== 'employed' && !ctx.venture) {
       s.mode = 'employed';
       s.yearsInMode = 0;
       // Re-entry after a break is priced off career capital, with a scar.
       const scar = 1 - clamp(0.06 * s.t + 0.04 * s.disruptions, 0, 0.25);
-      s.income = marketSalary(s, traits, loc) * scar;
+      s.income = marketSalary(s, traits, loc, mods.salaryLevelMultiplier) * scar;
       log(ctx, s.t, 'job-change', 'Returned to employment', 0);
     }
   }
@@ -706,7 +871,7 @@ export function step(s: SimState, ctx: SimContext, rng: Rng): void {
   // -- 4. Venture resolution ----------------------------------------------
   if (ctx.venture && !ctx.venture.resolved) {
     ctx.venture.yearsRunning += 1;
-    resolveVenture(s, ctx, rng);
+    resolveVenture(s, ctx);
   }
 
   // -- 5. Career capital and skill ----------------------------------------
@@ -723,21 +888,21 @@ export function step(s: SimState, ctx: SimContext, rng: Rng): void {
     params['career.capitalDecayRate'] *
     traits.fieldProfile.churn *
     (s.mode === 'employed' || s.mode === 'founder' || s.mode === 'student' ? 0.35 : 1);
-  const capitalNoise = normal(rng, 0, 1.1 * luck);
+  const capitalNoise = normal(S.career, 0, 1.1 * luck);
   s.careerCapital = clamp(
     s.careerCapital + capitalGain - capitalLoss + mods.careerCapitalDelta + capitalNoise,
     1,
     100,
   );
 
-  s.skillLevel = clamp(s.skillLevel + (capitalGain - capitalLoss) * 0.8 + normal(rng, 0, 0.9 * luck), 1, 100);
+  s.skillLevel = clamp(s.skillLevel + (capitalGain - capitalLoss) * 0.8 + normal(S.career, 0, 0.9 * luck), 1, 100);
 
   // -- 6. Network ----------------------------------------------------------
   const networkGain =
     0.9 * (1 + 0.45 * traits.extraversion) * (loc.opportunityIndex / 60) * (s.mode === 'employed' || s.mode === 'founder' ? 1 : 0.6);
   const networkDecay = 1.4 + (ctx.yearsSinceMove < 3 ? 2.2 : 0);
   s.networkStrength = clamp(
-    s.networkStrength + networkGain - networkDecay + mods.networkDelta + normal(rng, 0, 1.0 * luck),
+    s.networkStrength + networkGain - networkDecay + mods.networkDelta + normal(S.career, 0, 1.0 * luck),
     1,
     100,
   );
@@ -755,7 +920,7 @@ export function step(s: SimState, ctx: SimContext, rng: Rng): void {
       0,
       0.9,
     );
-    if (bernoulli(rng, layoffP)) {
+    if (bernoulli(S.career, layoffP)) {
       s.mode = 'unemployed';
       ctx.involuntary = true;
       ctx.jobSearchYears = 0;
@@ -778,13 +943,13 @@ export function step(s: SimState, ctx: SimContext, rng: Rng): void {
       0.95,
     );
     s.income = Math.max(0, s.income * 0.12); // statutory support, heavily stylised
-    if (bernoulli(rng, hazard)) {
+    if (bernoulli(S.career, hazard)) {
       s.mode = 'employed';
       s.yearsInMode = 0;
       ctx.involuntary = false;
       // Wage scarring after involuntary loss is real and persistent.
       const scarring = clamp(0.9 - 0.06 * ctx.jobSearchYears, 0.6, 0.95);
-      s.income = marketSalary(s, traits, loc) * scarring;
+      s.income = marketSalary(s, traits, loc, mods.salaryLevelMultiplier) * scarring;
       log(ctx, s.t, 'job-change', 'Found a new role', 0);
       ctx.jobSearchYears = 0;
     }
@@ -805,7 +970,8 @@ export function step(s: SimState, ctx: SimContext, rng: Rng): void {
     const deterministic =
       params['income.baseRealGrowth'] + experienceReturn + traitReturn + capitalReturn + cyclical + mods.incomeGrowthDelta;
 
-    const shock = logNormal(rng, 1, params['income.shockSigma'] * luck) - 1;
+    const shock =
+      logNormal(S.income, 1, params['income.shockSigma'] * luck * mods.incomeVolatilityMultiplier) - 1;
     s.income = Math.max(0, s.income * (1 + deterministic + shock));
 
     // Opportunities arriving through the network.
@@ -816,12 +982,12 @@ export function step(s: SimState, ctx: SimContext, rng: Rng): void {
       mods.opportunityMultiplier;
     // Time to the next opportunity is exponential; one arrives this year if
     // that waiting time is under a year.
-    const opportunityArrived = exponential(rng, Math.max(0.05, opportunityRate)) < 1;
+    const opportunityArrived = exponential(S.income, Math.max(0.05, opportunityRate)) < 1;
     if (opportunityArrived) {
-      const premium = params['income.jobChangePremium'] * clamp(1 + 0.3 * econ, 0.3, 1.6) * (0.5 + Math.abs(normal(rng, 0, 0.6)));
+      const premium = params['income.jobChangePremium'] * clamp(1 + 0.3 * econ, 0.3, 1.6) * (0.5 + Math.abs(normal(S.income, 0, 0.6)));
       // Whether you take it depends on ambition and on how bad things are.
       const inclination = 0.3 + 0.25 * traits.ambition + (s.stress > 65 ? 0.2 : 0) - (s.yearsInMode < 2 ? 0.2 : 0);
-      if (bernoulli(rng, clamp(inclination, 0.05, 0.85))) {
+      if (bernoulli(S.income, clamp(inclination, 0.05, 0.85))) {
         s.income *= 1 + premium;
         s.yearsInMode = 0;
         s.networkStrength = clamp(s.networkStrength + 2, 1, 100);
@@ -829,23 +995,27 @@ export function step(s: SimState, ctx: SimContext, rng: Rng): void {
       }
     }
   } else if (s.mode === 'founder' && ctx.venture && !ctx.venture.resolved) {
-    s.income = marketSalary(s, traits, loc) * params['startup.founderSalaryRatio'];
+    s.income = marketSalary(s, traits, loc, mods.salaryLevelMultiplier) * params["startup.founderSalaryRatio"];
   } else if (s.mode === 'student') {
-    s.income = Math.max(0, s.income * 0.15);
+    // A stipend/part-time level, re-derived each year rather than multiplied
+    // down from last year's — otherwise a multi-year course drives income to
+    // zero geometrically, which is not what studying does.
+    s.income = marketSalary(s, traits, loc, mods.salaryLevelMultiplier) * 0.15;
   } else if (s.mode === 'sabbatical') {
     s.income = 0;
   }
 
   // Partner income tracks the economy loosely.
   if (s.partnered && s.partnerIncome > 0) {
-    s.partnerIncome *= 1 + params['income.baseRealGrowth'] + normal(rng, 0, 0.08 * luck) + 0.008 * econ;
+    s.partnerIncome *= 1 + params['income.baseRealGrowth'] + normal(S.income, 0, 0.08 * luck) + 0.008 * econ;
   }
 
   // -- 9. Hours, stress ----------------------------------------------------
   const hours =
-    ctx.hours +
+    traits.baseHours +
+    mods.hoursDelta +
     (s.mode === 'founder' ? params['startup.hoursPremium'] : 0) +
-    (s.mode === 'unemployed' || s.mode === 'sabbatical' ? -ctx.hours : 0);
+    (s.mode === 'unemployed' || s.mode === 'sabbatical' ? -(traits.baseHours + mods.hoursDelta) : 0);
   const overwork = Math.max(0, hours - params['career.burnoutThreshold']);
   s.runwayMonths = runway(s);
   const financialStrain = remap(s.runwayMonths, params['wealth.runwayStressPoint'], 0, 0, 28);
@@ -864,7 +1034,7 @@ export function step(s: SimState, ctx: SimContext, rng: Rng): void {
     100,
   );
   // Stress adjusts fast but not instantly.
-  s.stress = clamp(s.stress + (stressTarget - s.stress) * 0.55 + normal(rng, 0, 3 * luck), 0, 100);
+  s.stress = clamp(s.stress + (stressTarget - s.stress) * 0.55 + normal(S.misc, 0, 3 * luck), 0, 100);
 
   // -- 10. Health ----------------------------------------------------------
   const ageDecline = params['health.ageDeclineRate'] * Math.exp((s.age - 40) / 26);
@@ -875,7 +1045,7 @@ export function step(s: SimState, ctx: SimContext, rng: Rng): void {
   const stressHealth = s.stress > 70 ? params['health.stressHealthCost'] * ((s.stress - 70) / 30) : 0;
   const socialHealth = params['health.socialConnectionBenefit'] * ((s.networkStrength - 50) / 100);
   s.health = clamp(
-    s.health - ageDecline + habitTerm - stressHealth + socialHealth * 0.35 + mods.healthDelta + normal(rng, 0, 1.4 * luck),
+    s.health - ageDecline + habitTerm - stressHealth + socialHealth * 0.35 + mods.healthDelta + normal(S.health, 0, 1.4 * luck),
     1,
     100,
   );
@@ -885,40 +1055,52 @@ export function step(s: SimState, ctx: SimContext, rng: Rng): void {
     0,
     0.6,
   );
-  if (bernoulli(rng, shockP)) {
-    const severity = uniform(rng, 8, 30);
+  if (bernoulli(S.health, shockP)) {
+    const severity = uniform(S.health, 8, 30);
     s.health = clamp(s.health - severity, 1, 100);
     s.disruptions += 1;
     if (severity > 20 && (s.mode === 'employed' || s.mode === 'founder')) {
       s.income *= 0.75;
     }
     log(ctx, s.t, 'health-shock', 'Serious health event', -severity);
-  } else if (s.health < 70 && bernoulli(rng, 0.25)) {
-    s.health = clamp(s.health + uniform(rng, 1, 5), 1, 100);
+  } else if (s.health < 70 && bernoulli(S.health, 0.25)) {
+    s.health = clamp(s.health + uniform(S.health, 1, 5), 1, 100);
   }
 
   // Mortality. Rare inside a typical horizon, but the model should not pretend
   // it is impossible, because that quietly biases every long-run average up.
   const mortality = clamp(0.00035 * Math.exp((s.age - 40) / 9.5) * remap(s.health, 90, 20, 0.7, 3.2), 0, 0.9);
-  if (bernoulli(rng, mortality)) {
+  if (bernoulli(S.health, mortality)) {
     s.alive = false;
     return;
   }
 
   // -- 11. Relationships ---------------------------------------------------
-  stepRelationships(s, ctx, rng);
+  stepRelationships(s, ctx);
 
   // -- 12. Spending and wealth --------------------------------------------
   const previousSpend = s.spend;
-  const householdGross = s.income + s.partnerIncome;
   const net = afterTax(s.income * (1 - traits.pensionRate), loc.costIndex) + afterTax(s.partnerIncome, loc.costIndex);
 
-  // Lifestyle inflation: spending chases income upward, and is far stickier
-  // going down. This asymmetry is most of why high earners still feel broke.
-  const targetSpend =
-    previousSpend + Math.max(0, net - previousSpend) * params['wealth.lifestyleInflation'] * clamp(1 - 0.3 * traits.discipline, 0.4, 1.5);
-  s.spend = Math.max(previousSpend * 0.94, targetSpend) + params['relationship.childAnnualCost'] * s.children * 0.12;
-  s.spend = Math.max(s.spend, 0);
+  // Lifestyle inflation applies to the *rise* in income, not to the gap
+  // between income and current spending. Applying it to the gap looks similar
+  // for one year and is quite wrong over fifteen: it compounds until spending
+  // equals income and the savings rate goes to zero for everybody.
+  //
+  // Downward stickiness is separate and much stronger than the upward
+  // response — households cut spending slowly and reluctantly, which is
+  // exactly why a lost job turns into a financial emergency so fast.
+  const raise = Math.max(0, net - ctx.previousNet);
+  const appetite = params['wealth.lifestyleInflation'] * clamp(1 - 0.3 * traits.discipline, 0.4, 1.5);
+  let spendTarget = previousSpend + raise * appetite;
+  if (net < previousSpend) {
+    // Income has fallen below spending: cut, but only part of the way, and no
+    // further than a floor of essential costs.
+    const floor = Math.max(net, previousSpend * 0.55);
+    spendTarget = Math.max(floor, previousSpend - (previousSpend - net) * 0.35);
+  }
+  ctx.previousNet = net;
+  s.spend = Math.max(0, spendTarget) + params['relationship.childAnnualCost'] * s.children * 0.12;
 
   const surplus = net - s.spend;
   const pensionFlow = s.income * traits.pensionRate;
@@ -975,18 +1157,31 @@ export function step(s: SimState, ctx: SimContext, rng: Rng): void {
 
   const target = clamp(breakdown.total + mods.wellbeingPersistent + ctx.shockStock, 0, 100);
   // Wellbeing itself has inertia — it does not jump to its target in one year.
-  s.happiness = clamp(s.happiness + (target - s.happiness) * 0.6 + normal(rng, 0, 2.2 * luck), 0, 100);
+  s.happiness = clamp(s.happiness + (target - s.happiness) * 0.6 + normal(S.misc, 0, 2.2 * luck), 0, 100);
   s.setPoint = traits.setPoint;
 
   const discount = Math.pow(1 + params['wellbeing.discountRate'], -s.t);
   ctx.wellbeingIntegral += s.happiness * discount;
 }
 
-/** What the market would pay someone with this profile, right now. */
-export function marketSalary(s: SimState, traits: TraitVector, loc = getLocation(s.locationId)): number {
+/**
+ * What the market would pay someone with this profile, right now.
+ *
+ * `levelMultiplier` carries permanent, portable changes to your value — a
+ * qualification, most obviously. It has to be applied here rather than to the
+ * current salary, or every path that re-prices you against the market (a
+ * layoff, the end of a course, coming back from a break) would silently throw
+ * the qualification away.
+ */
+export function marketSalary(
+  s: SimState,
+  traits: TraitVector,
+  loc = getLocation(s.locationId),
+  levelMultiplier = 1,
+): number {
   const base = 30000 * traits.fieldProfile.payLevel * loc.salaryIndex;
   const capital = Math.pow(Math.max(0.2, s.careerCapital / 50), 1.15 * traits.fieldProfile.paySlope);
-  return base * capital;
+  return base * capital * levelMultiplier;
 }
 
 /**
@@ -1009,14 +1204,14 @@ function purposeAlignment(s: SimState, traits: TraitVector): number {
 // Sub-processes
 // ---------------------------------------------------------------------------
 
-function resolveVenture(s: SimState, ctx: SimContext, rng: Rng): void {
+function resolveVenture(s: SimState, ctx: SimContext): void {
   const v = ctx.venture!;
-  const { params, traits } = ctx;
+  const { params, traits, streams: S } = ctx;
 
   // Hazard of the question being settled this year. Most things resolve
   // within a few years one way or another.
   const resolveP = clamp(0.18 + 0.1 * v.yearsRunning, 0, 0.75);
-  if (!bernoulli(rng, resolveP)) return;
+  if (!bernoulli(S.venture, resolveP)) return;
 
   v.resolved = true;
   s.disruptions += 1;
@@ -1037,22 +1232,25 @@ function resolveVenture(s: SimState, ctx: SimContext, rng: Rng): void {
   const wFail = params['startup.failureRate'];
   const wAcq = params['startup.acquisitionRate'] * tilt;
   const wBreak = params['startup.breakoutRate'] * tilt * tilt;
-  const outcome = categorical(rng, [wFail, wAcq, wBreak]);
+  const outcome = categorical(S.venture, [wFail, wAcq, wBreak]);
 
-  const marketPay = marketSalary(s, traits);
+  const marketPay = marketSalary(s, traits, getLocation(s.locationId), ctx.mods.salaryLevelMultiplier);
 
   if (outcome === 0) {
     log(ctx, s.t, 'startup-failed', 'The company did not work out', -1);
     s.mode = 'employed';
     s.yearsInMode = 0;
-    // A failed venture is not a wasted one: it accelerated career capital.
-    // But a very long unsuccessful run stops being a credential.
-    const drag = clamp(1 - 0.08 * Math.max(0, v.yearsRunning - 3), 0.6, 1);
-    s.careerCapital = clamp(s.careerCapital + params['startup.careerCapitalBonus'] * v.yearsRunning * drag * 0.5, 1, 100);
+    // The learning from founding was already credited year by year through the
+    // career-capital channel; crediting it again here would double-count it and
+    // make failure look like a free education. What is left is the reputational
+    // effect of the failure itself, which turns negative on a long unsuccessful
+    // run — a two-year attempt is a story, a seven-year one is a gap.
+    const reputational = clamp(1.5 - 0.7 * Math.max(0, v.yearsRunning - 2), -5, 1.5);
+    s.careerCapital = clamp(s.careerCapital + reputational, 1, 100);
     s.income = marketPay * clamp(0.85 + 0.03 * v.yearsRunning, 0.75, 1.05);
     ctx.shockStock -= 7;
   } else if (outcome === 1) {
-    const proceeds = logNormal(rng, marketPay * 2.4, 0.85);
+    const proceeds = logNormal(S.venture, marketPay * 2.4, 0.85);
     s.liquid += proceeds;
     log(ctx, s.t, 'startup-acquired', 'Acquired', proceeds);
     s.mode = 'employed';
@@ -1062,7 +1260,7 @@ function resolveVenture(s: SimState, ctx: SimContext, rng: Rng): void {
     s.income = marketPay * 1.15;
     ctx.shockStock += 9;
   } else {
-    const proceeds = pareto(rng, params['startup.breakoutParetoAlpha'], marketPay * 22);
+    const proceeds = pareto(S.venture, params['startup.breakoutParetoAlpha'], marketPay * 22);
     s.liquid += proceeds * 0.35;
     s.invested += proceeds * 0.65;
     log(ctx, s.t, 'startup-breakout', 'Breakout outcome', proceeds);
@@ -1074,8 +1272,8 @@ function resolveVenture(s: SimState, ctx: SimContext, rng: Rng): void {
   }
 }
 
-function stepRelationships(s: SimState, ctx: SimContext, rng: Rng): void {
-  const { params, traits, mods } = ctx;
+function stepRelationships(s: SimState, ctx: SimContext): void {
+  const { params, traits, streams: S } = ctx;
   const loc = getLocation(s.locationId);
 
   if (!s.partnered) {
@@ -1092,10 +1290,10 @@ function stepRelationships(s: SimState, ctx: SimContext, rng: Rng): void {
       0,
       0.85,
     );
-    if (bernoulli(rng, p)) {
+    if (bernoulli(S.rel, p)) {
       s.partnered = true;
-      s.relationshipQuality = clamp(normal(rng, 70, 12), 20, 100);
-      s.partnerIncome = Math.max(0, normal(rng, marketSalary(s, traits, loc) * 0.75, marketSalary(s, traits, loc) * 0.4));
+      s.relationshipQuality = clamp(normal(S.rel, 70, 12), 20, 100);
+      s.partnerIncome = Math.max(0, normal(S.rel, marketSalary(s, traits, loc) * 0.75, marketSalary(s, traits, loc) * 0.4));
       ctx.shockStock += 6;
       log(ctx, s.t, 'relationship-formed', 'Met someone', 6);
     }
@@ -1103,10 +1301,16 @@ function stepRelationships(s: SimState, ctx: SimContext, rng: Rng): void {
   }
 
   // Quality drifts: stress and long hours erode it, time together stabilises it.
+  const mods = effectiveModifiers(ctx.mods, s.t);
   const erosion = 0.05 * Math.max(0, s.stress - 55) + 0.04 * Math.max(0, ctx.hours - 50);
-  const repair = 1.1 + 0.4 * traits.agreeableness;
+  // Quality reverts toward a couple-specific set point rather than climbing
+  // without limit. Modelling repair as a constant additive term quietly sends
+  // every surviving relationship to a perfect hundred, which then inflates
+  // wellbeing across the whole simulation.
+  const qualitySetPoint = 68 + 9 * traits.agreeableness - 6 * traits.neuroticism;
+  const reversion = (qualitySetPoint - s.relationshipQuality) * 0.25;
   s.relationshipQuality = clamp(
-    s.relationshipQuality - erosion + repair + normal(rng, 0, 3.5 * params['model.luckWeight']),
+    s.relationshipQuality - erosion + reversion + normal(S.rel, 0, 3.5 * params['model.luckWeight']),
     0,
     100,
   );
@@ -1122,14 +1326,14 @@ function stepRelationships(s: SimState, ctx: SimContext, rng: Rng): void {
     0,
     0.85,
   );
-  if (bernoulli(rng, separationP)) {
+  if (bernoulli(S.rel, separationP)) {
     s.partnered = false;
     s.relationshipQuality = 0;
     s.partnerIncome = 0;
     s.disruptions += 1;
     // Separation also splits assets, which is a real financial event and one
     // people routinely leave out when they imagine this branch.
-    const split = uniform(rng, 0.35, 0.5);
+    const split = uniform(S.rel, 0.35, 0.5);
     s.liquid *= 1 - split * 0.5;
     s.invested *= 1 - split * 0.5;
     ctx.shockStock -= 10;
@@ -1144,7 +1348,7 @@ function stepRelationships(s: SimState, ctx: SimContext, rng: Rng): void {
       0,
       0.5,
     );
-    if (bernoulli(rng, p)) {
+    if (bernoulli(S.rel, p)) {
       s.children += 1;
       ctx.youngestChild = 0;
       s.spend += params['relationship.childAnnualCost'];

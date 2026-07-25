@@ -364,15 +364,16 @@ export const ASSUMPTION_LIST = A([
     id: 'career.layoffBaseRate',
     group: 'career',
     label: 'Baseline annual involuntary job loss risk',
-    value: 0.055,
+    value: 0.032,
     min: 0,
     max: 0.3,
     step: 0.005,
     unit: '%',
     display: 100,
     rationale:
-      'The chance of being laid off, made redundant or otherwise involuntarily separated in a given year, before adjusting for your employer stage, seniority and the simulated economy.',
-    caveat: 'Varies by an order of magnitude across sectors and firm stage. The engine adjusts it heavily; this is only the anchor.',
+      'The chance of being laid off, made redundant or otherwise involuntarily separated in a given year, before adjusting for your employer stage, seniority and the simulated economy. Small per year, but it compounds: at this rate roughly a third of fifteen-year runs contain at least one involuntary separation, which is about what panel data show.',
+    caveat:
+      'Varies by an order of magnitude across sectors and firm stage, and the headline separation rates in official statistics are dominated by short-tenure and seasonal work that looks nothing like a salaried career. The engine adjusts this heavily; it is only the anchor.',
     confidence: 'medium',
     sources: [{ label: 'ONS Labour Force Survey — redundancy rates; US JOLTS layoffs and discharges rate', kind: 'official-statistics' }],
   },
@@ -943,7 +944,7 @@ export type AssumptionId = (typeof ASSUMPTION_LIST)[number]['id'];
 
 export const ASSUMPTIONS: Record<AssumptionId, Assumption> = Object.fromEntries(
   ASSUMPTION_LIST.map((a) => [a.id, a]),
-) as Record<AssumptionId, Assumption>;
+) as unknown as Record<AssumptionId, Assumption>;
 
 /** Resolved parameter set handed to the engine. */
 export type AssumptionValues = Record<AssumptionId, number>;

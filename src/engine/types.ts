@@ -426,8 +426,22 @@ export interface SimPath {
   events: SimEvent[];
 }
 
+/** What happened along the way, kept for every run so the tree can branch on it. */
+export interface RunFlags {
+  venture: 'none' | 'failed' | 'acquired' | 'breakout';
+  laidOff: boolean;
+  healthShock: boolean;
+  separated: boolean;
+  metSomeone: boolean;
+  endedPartnered: boolean;
+  children: number;
+  /** Years spent involuntarily out of work. */
+  unemployedYears: number;
+}
+
 /** The compact per-run record kept for all N runs. */
 export interface RunOutcome {
+  flags: RunFlags;
   netWorth: number;
   income: number;
   happiness: number;
