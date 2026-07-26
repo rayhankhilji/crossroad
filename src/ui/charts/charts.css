@@ -96,6 +96,26 @@
   height: 100%;
 }
 
+/*
+  Staggered entrance for chart marks, driven by CSS rather than JavaScript.
+
+  Marks carry their real opacity as an SVG attribute and this group fades on
+  top of it, so the data is never *conditional* on an animation having run.
+  `both` keeps the end state after it finishes, and the global reduced-motion
+  rule collapses the duration to nothing while still applying that end state.
+*/
+.chart-reveal {
+  animation: chart-reveal 0.5s var(--ease) both;
+}
+@keyframes chart-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* -- Legend --------------------------------------------------------------- */
 .chart-legend {
   display: flex;

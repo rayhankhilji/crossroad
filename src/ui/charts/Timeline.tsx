@@ -125,26 +125,33 @@ export function Timeline({
         <svg width="100%" height={height} role="img" aria-label={`Sampled life paths, ${track.label}`}>
           <YAxis scale={y} ticks={yTicks} format={formatY} width={margin.left + plotWidth} left={margin.left} />
 
+          {/*
+            The reveal is a CSS animation on a wrapping group, not a JS one on
+            the path. It matters: a JS-driven `initial={{ opacity: 0 }}` leaves
+            the line genuinely absent until the animation runs, so anything
+            that stops the frame loop — a throttled tab, a stalled renderer —
+            produces an empty chart. Here the path carries its real opacity as
+            an attribute and the group fades on top, so the worst case is a
+            chart that appears without its entrance.
+          */}
           {paths.map((path, i) => {
             const isSelected = selected === path.index;
             const points = path.frames.map((frame, year) => ({ x: x(year), y: y(track.pick(frame)) }));
             return (
-              <motion.path
-                key={path.index}
-                d={linePath(points)}
-                fill="none"
-                stroke={isSelected ? colour : 'var(--ink)'}
-                strokeWidth={isSelected ? 2.2 : 1}
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                opacity={selected === null ? 0.16 : isSelected ? 1 : 0.05}
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1], delay: Math.min(0.5, i * 0.012) }}
-                style={{ cursor: 'pointer' }}
-                onPointerEnter={() => setSelected(path.index)}
-                onClick={() => setSelected((current) => (current === path.index ? null : path.index))}
-              />
+              <g key={path.index} className="chart-reveal" style={{ animationDelay: `${Math.min(0.4, i * 0.008)}s` }}>
+                <path
+                  d={linePath(points)}
+                  fill="none"
+                  stroke={isSelected ? colour : 'var(--ink)'}
+                  strokeWidth={isSelected ? 2.2 : 1}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  opacity={selected === null ? 0.22 : isSelected ? 1 : 0.05}
+                  style={{ cursor: 'pointer', transition: 'opacity 0.2s var(--ease), stroke-width 0.2s var(--ease)' }}
+                  onPointerEnter={() => setSelected(path.index)}
+                  onClick={() => setSelected((current) => (current === path.index ? null : path.index))}
+                />
+              </g>
             );
           })}
 

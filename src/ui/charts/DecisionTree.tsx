@@ -257,18 +257,18 @@ export function DecisionTree({
                   ? ribbon.branchId !== hoveredNode.branchId
                   : false;
               return (
-                <motion.path
+                <g
                   key={ribbon.key}
-                  d={ribbon.path}
-                  fill={ribbon.colour}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: dim ? 0.06 : ribbon.opacity }}
-                  transition={{
-                    duration: 0.45,
-                    ease: [0.22, 1, 0.36, 1],
-                    delay: hovered ? 0 : Math.min(0.7, ri * 0.035),
-                  }}
-                />
+                  className="chart-reveal"
+                  style={{ animationDelay: `${Math.min(0.7, ri * 0.035)}s` }}
+                >
+                  <path
+                    d={ribbon.path}
+                    fill={ribbon.colour}
+                    opacity={dim ? 0.06 : ribbon.opacity}
+                    style={{ transition: 'opacity 0.25s var(--ease)' }}
+                  />
+                </g>
               );
             })}
           </g>

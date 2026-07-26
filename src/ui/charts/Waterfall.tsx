@@ -146,15 +146,35 @@ export function Waterfall({
                   strokeWidth={1}
                 />
                 {ciHalf > 1.5 && (
-                  <line
-                    x1={x(value) - ciHalf}
-                    x2={x(value) + ciHalf}
-                    y1={cy}
-                    y2={cy}
-                    stroke="var(--ink)"
-                    strokeWidth={1}
-                    opacity={0.5}
-                  />
+                  <>
+                    {/* Clamped to the plot area: a wide interval on a small
+                        bar would otherwise run out under the labels. Caps mark
+                        where the interval was cut off. */}
+                    <line
+                      x1={Math.max(barLeft, x(value) - ciHalf)}
+                      x2={Math.min(barLeft + barWidth, x(value) + ciHalf)}
+                      y1={cy}
+                      y2={cy}
+                      stroke="var(--ink)"
+                      strokeWidth={1}
+                      opacity={0.45}
+                    />
+                    {[x(value) - ciHalf, x(value) + ciHalf].map((cap, ci) => {
+                      const clamped = Math.max(barLeft, Math.min(barLeft + barWidth, cap));
+                      return (
+                        <line
+                          key={ci}
+                          x1={clamped}
+                          x2={clamped}
+                          y1={cy - 4}
+                          y2={cy + 4}
+                          stroke="var(--ink)"
+                          strokeWidth={1}
+                          opacity={0.45}
+                        />
+                      );
+                    })}
+                  </>
                 )}
                 <text className="waterfall__value num" x={barLeft + barWidth + 8} y={cy + 4}>
                   {format(value)}

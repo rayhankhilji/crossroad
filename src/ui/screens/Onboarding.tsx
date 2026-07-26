@@ -2,10 +2,10 @@
  * Onboarding.
  *
  * Long on purpose. The whole product rests on the twin, and a twin built from
- * four questions produces confident nonsense. Fifteen chapters, roughly twenty
- * minutes, and every one of them explains why it is asking — because a person
- * being asked for their savings, their sleep and their relationship deserves
- * to know what each answer will actually be used for.
+ * four questions produces confident nonsense. Eleven chapters, roughly
+ * twenty-five minutes, and every one of them explains why it is asking —
+ * because a person being asked for their savings, their sleep and their
+ * relationship deserves to know what each answer will actually be used for.
  *
  * Nothing is mandatory. Skipped chapters fall back to population defaults, and
  * the twin screen shows exactly which parts of the portrait are you and which
@@ -90,7 +90,7 @@ export function Onboarding() {
                 onChange={(v) => patch((t) => void (t.identity.displayName = v))}
               />
             </Field>
-            <Field label="Age" hint={`${twin.identity.age}`}>
+            <Field label="Age">
               <Slider
                 value={twin.identity.age}
                 min={16}
@@ -183,7 +183,7 @@ export function Onboarding() {
                 onChange={(v) => patch((t) => void (t.career.employerStage = v))}
               />
             </Field>
-            <Field label="Years of experience" hint={`${twin.career.yearsExperience}`}>
+            <Field label="Years of experience">
               <Slider
                 value={twin.career.yearsExperience}
                 min={0}
@@ -192,7 +192,7 @@ export function Onboarding() {
                 format={(v) => `${v} yr`}
               />
             </Field>
-            <Field label="Hours a week, honestly" hint={`${twin.career.hoursPerWeek}h`}>
+            <Field label="Hours a week, honestly">
               <Slider
                 value={twin.career.hoursPerWeek}
                 min={0}
@@ -202,7 +202,7 @@ export function Onboarding() {
                 marks={['0', '90']}
               />
             </Field>
-            <Field label="How satisfying is the work?" hint={`${twin.career.satisfaction}`}>
+            <Field label="How satisfying is the work?">
               <Slider
                 value={twin.career.satisfaction}
                 min={0}
@@ -211,7 +211,7 @@ export function Onboarding() {
                 marks={['Miserable', 'Love it']}
               />
             </Field>
-            <Field label="How much of it is remote?" hint={`${Math.round(twin.career.remoteShare * 100)}%`}>
+            <Field label="How much of it is remote?">
               <Slider
                 value={Math.round(twin.career.remoteShare * 100)}
                 min={0}
@@ -289,7 +289,7 @@ export function Onboarding() {
                 onChange={(v) => patch((t) => void (t.finance.invested = v))}
               />
             </Field>
-            <Field label="Pension contribution" hint={`${Math.round(twin.finance.pensionRate * 100)}%`}>
+            <Field label="Pension contribution">
               <Slider
                 value={Math.round(twin.finance.pensionRate * 100)}
                 min={0}
@@ -300,7 +300,6 @@ export function Onboarding() {
             </Field>
             <Field
               label="If everything went wrong, is there a safety net?"
-              hint={`${twin.finance.familySafetyNet}`}
               help="Family, inheritance, a spare room to move into. It changes how much risk the model thinks you can survive, which changes what the downside branches actually look like."
             >
               <Slider
@@ -353,7 +352,6 @@ export function Onboarding() {
             </Field>
             <Field
               label="How selective was the institution?"
-              hint={`${twin.education.institutionTier}`}
               help="A crude proxy for the signalling value of the credential, which fades quickly with experience in the model — as it does in the evidence."
             >
               <Slider
@@ -396,7 +394,6 @@ export function Onboarding() {
           <div className="ob__grid">
             <Field
               label="Risk tolerance"
-              hint={`${twin.traits.riskTolerance}`}
               help="Used two ways: it shifts how much autonomy is worth to you, and it sets the risk-aversion term when options are scored against your own values."
             >
               <Slider
@@ -407,7 +404,7 @@ export function Onboarding() {
                 marks={['Certainty please', 'Bring it on']}
               />
             </Field>
-            <Field label="Ambition" hint={`${twin.traits.ambition}`}>
+            <Field label="Ambition">
               <Slider
                 value={twin.traits.ambition}
                 min={0}
@@ -416,7 +413,7 @@ export function Onboarding() {
                 marks={['Content', 'Driven']}
               />
             </Field>
-            <Field label="Discipline" hint={`${twin.traits.discipline}`} help="How reliably you do the thing when you do not feel like it.">
+            <Field label="Discipline" help="How reliably you do the thing when you do not feel like it.">
               <Slider
                 value={twin.traits.discipline}
                 min={0}
@@ -425,7 +422,7 @@ export function Onboarding() {
                 marks={['Erratic', 'Relentless']}
               />
             </Field>
-            <Field label="Tolerance for ambiguity" hint={`${twin.traits.ambiguityTolerance}`}>
+            <Field label="Tolerance for ambiguity">
               <Slider
                 value={twin.traits.ambiguityTolerance}
                 min={0}
@@ -469,7 +466,7 @@ export function Onboarding() {
                   </Field>
                   {twin.traits.cognition.method !== 'unset' && (
                     <>
-                      <Field label="Estimate (100 = average)" hint={`${twin.traits.cognition.estimate}`}>
+                      <Field label="Estimate (100 = average)">
                         <Slider
                           value={twin.traits.cognition.estimate}
                           min={70}
@@ -479,7 +476,6 @@ export function Onboarding() {
                       </Field>
                       <Field
                         label="Uncertainty attached to it"
-                        hint={`±${twin.traits.cognition.standardError}`}
                         help="The engine samples around your estimate using this. Wider means the simulation is less willing to lean on the number."
                       >
                         <Slider
@@ -529,7 +525,7 @@ export function Onboarding() {
             </Field>
             {['dating', 'partnered', 'engaged', 'married'].includes(twin.relationship.status) && (
               <>
-                <Field label="How is it, really?" hint={`${twin.relationship.satisfaction}`}>
+                <Field label="How is it, really?">
                   <Slider
                     value={twin.relationship.satisfaction}
                     min={0}
@@ -538,7 +534,7 @@ export function Onboarding() {
                     marks={['Struggling', 'Thriving']}
                   />
                 </Field>
-                <Field label="Years together" hint={`${twin.relationship.yearsTogether}`}>
+                <Field label="Years together">
                   <Slider
                     value={twin.relationship.yearsTogether}
                     min={0}
@@ -557,7 +553,6 @@ export function Onboarding() {
                 </Field>
                 <Field
                   label="How willing are they to move?"
-                  hint={`${twin.relationship.partnerMobility}`}
                   help="This almost entirely determines the relationship-strain channel on any relocation question."
                 >
                   <Slider
@@ -570,7 +565,7 @@ export function Onboarding() {
                 </Field>
               </>
             )}
-            <Field label="Children" hint={`${twin.relationship.children}`}>
+            <Field label="Children">
               <Slider
                 value={twin.relationship.children}
                 min={0}
@@ -596,7 +591,7 @@ export function Onboarding() {
         minutes: 2,
         render: () => (
           <div className="ob__grid">
-            <Field label="How would you rate your health?" hint={`${twin.health.selfRated}`}>
+            <Field label="How would you rate your health?">
               <Slider
                 value={twin.health.selfRated}
                 min={0}
@@ -605,7 +600,7 @@ export function Onboarding() {
                 marks={['Poor', 'Excellent']}
               />
             </Field>
-            <Field label="Hours of sleep a night" hint={`${twin.health.sleepHours}h`}>
+            <Field label="Hours of sleep a night">
               <Slider
                 value={twin.health.sleepHours}
                 min={4}
@@ -617,7 +612,6 @@ export function Onboarding() {
             </Field>
             <Field
               label="Exercise sessions a week"
-              hint={`${twin.health.exerciseSessions}`}
               help="Returns diminish sharply. Going from zero to three does far more than going from six to nine — the model reflects that curve rather than treating exercise as linear."
             >
               <Slider
@@ -627,7 +621,7 @@ export function Onboarding() {
                 onChange={(v) => patch((t) => void (t.health.exerciseSessions = v))}
               />
             </Field>
-            <Field label="Alcohol units a week" hint={`${twin.health.alcoholUnits}`}>
+            <Field label="Alcohol units a week">
               <Slider
                 value={twin.health.alcoholUnits}
                 min={0}
@@ -655,7 +649,6 @@ export function Onboarding() {
           <div className="ob__grid">
             <Field
               label="People who would take a call from you about work"
-              hint={`${twin.network.professionalContacts}`}
             >
               <Slider
                 value={twin.network.professionalContacts}
@@ -665,7 +658,7 @@ export function Onboarding() {
                 onChange={(v) => patch((t) => void (t.network.professionalContacts = v))}
               />
             </Field>
-            <Field label="People you could call at 3am" hint={`${twin.network.closeFriends}`}>
+            <Field label="People you could call at 3am">
               <Slider
                 value={twin.network.closeFriends}
                 min={0}
@@ -673,7 +666,7 @@ export function Onboarding() {
                 onChange={(v) => patch((t) => void (t.network.closeFriends = v))}
               />
             </Field>
-            <Field label="Mentors" hint={`${twin.network.mentors}`}>
+            <Field label="Mentors">
               <Slider
                 value={twin.network.mentors}
                 min={0}
@@ -683,7 +676,6 @@ export function Onboarding() {
             </Field>
             <Field
               label="How far does your network reach beyond your own field?"
-              hint={`${twin.network.reach}`}
               help="Breadth matters more than size for opportunity flow — that is the whole finding behind the strength of weak ties."
             >
               <Slider
@@ -707,7 +699,6 @@ export function Onboarding() {
           <div className="ob__grid">
             <Field
               label="Share of take-home you save"
-              hint={`${Math.round(twin.habits.savingsRate * 100)}%`}
             >
               <Slider
                 value={Math.round(twin.habits.savingsRate * 100)}
@@ -719,7 +710,6 @@ export function Onboarding() {
             </Field>
             <Field
               label="Hours a week of deliberate practice"
-              hint={`${twin.habits.deliberatePractice}h`}
               help="Not work — practice at the edge of your ability, where you are actually bad at the thing. The evidence for its effect is much weaker than the popular version suggests, and the model treats it accordingly."
             >
               <Slider
@@ -730,7 +720,7 @@ export function Onboarding() {
                 format={(v) => `${v}h`}
               />
             </Field>
-            <Field label="Hours a week reading or learning" hint={`${twin.habits.learningHours}h`}>
+            <Field label="Hours a week reading or learning">
               <Slider
                 value={twin.habits.learningHours}
                 min={0}
@@ -739,7 +729,7 @@ export function Onboarding() {
                 format={(v) => `${v}h`}
               />
             </Field>
-            <Field label="Times a week you see people socially" hint={`${twin.habits.socialContact}`}>
+            <Field label="Times a week you see people socially">
               <Slider
                 value={twin.habits.socialContact}
                 min={0}
@@ -747,7 +737,7 @@ export function Onboarding() {
                 onChange={(v) => patch((t) => void (t.habits.socialContact = v))}
               />
             </Field>
-            <Field label="Non-work screen hours a day" hint={`${twin.habits.discretionaryScreen}h`}>
+            <Field label="Non-work screen hours a day">
               <Slider
                 value={twin.habits.discretionaryScreen}
                 min={0}

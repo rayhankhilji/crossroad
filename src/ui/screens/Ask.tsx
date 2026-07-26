@@ -138,7 +138,6 @@ export function Ask() {
             <div className="ask__settings">
               <Field
                 label="How far forward"
-                hint={`${horizonYears} years`}
                 help="Uncertainty compounds. Long horizons are useful for seeing the shape of a decision, not for reading a number off."
               >
                 <Slider value={horizonYears} min={1} max={40} onChange={setHorizon} format={(v) => `${v}y`} />
@@ -146,7 +145,6 @@ export function Ask() {
 
               <Field
                 label="Futures per branch"
-                hint={count(runs)}
                 help="More runs narrow the error on every statistic — but only about the model, never about the world."
               >
                 <Segmented
@@ -279,7 +277,7 @@ function OptionControl({
   }
 
   return (
-    <Field label={spec.label} help={spec.help} hint={`${numeric}${spec.unit ? ` ${spec.unit}` : ''}`}>
+    <Field label={spec.label} help={spec.help}>
       <Slider
         value={numeric}
         min={spec.min ?? 0}
