@@ -1,0 +1,284 @@
+.results {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--s-6) var(--s-5) var(--s-9);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  position: relative;
+  z-index: 1;
+}
+
+.results--running {
+  min-height: 70vh;
+  justify-content: center;
+}
+
+/* -- Running -------------------------------------------------------------- */
+.running {
+  max-width: 46rem;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-4);
+}
+.running__title {
+  font-size: var(--text-xl);
+  max-width: 22ch;
+}
+.running__label {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--brand-bright);
+}
+.running .progress {
+  width: 100%;
+}
+.running__note {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  line-height: 1.65;
+  max-width: 60ch;
+}
+
+/* -- Header --------------------------------------------------------------- */
+.results__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-5);
+  flex-wrap: wrap;
+  margin-bottom: var(--s-2);
+}
+.results__title {
+  font-size: var(--text-2xl);
+  margin-top: var(--s-2);
+  max-width: 20ch;
+}
+.results__header-actions {
+  display: flex;
+  gap: var(--s-2);
+}
+
+/* -- Verdict -------------------------------------------------------------- */
+.results__verdict {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--s-4);
+}
+
+.verdict {
+  text-align: left;
+  background: var(--surface-1);
+  border: 1px solid var(--line-faint);
+  border-radius: var(--radius-lg);
+  padding: var(--s-5);
+  cursor: pointer;
+  transition: border-color 0.18s var(--ease), background 0.18s var(--ease);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+.verdict:hover {
+  border-color: var(--line);
+}
+.verdict.is-focus {
+  border-color: var(--brand-line);
+  background: linear-gradient(180deg, rgba(25, 158, 112, 0.07), var(--surface-1));
+}
+
+.verdict__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+}
+.verdict__swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex: none;
+}
+.verdict__label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+.verdict__vs {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+}
+
+.verdict__primary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+.verdict__winrate {
+  font-size: var(--text-3xl);
+  color: var(--ink);
+  letter-spacing: -0.045em;
+  line-height: 0.95;
+}
+.verdict__winrate-caption {
+  font-size: var(--text-sm);
+  color: var(--ink-secondary);
+  line-height: 1.5;
+  max-width: 32ch;
+}
+
+.verdict__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-4);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line-faint);
+}
+.verdict__pair > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.verdict__key {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+}
+.verdict__val {
+  font-size: var(--text-lg);
+  letter-spacing: -0.03em;
+}
+.verdict__val.is-good {
+  color: var(--brand-bright);
+}
+.verdict__val.is-bad {
+  color: #f0a0a0;
+}
+.verdict__val--muted {
+  color: var(--ink-secondary);
+}
+.verdict__note {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  line-height: 1.45;
+}
+
+.verdict__skew {
+  font-size: var(--text-xs);
+  color: #e8bf6a;
+  background: rgba(201, 133, 0, 0.09);
+  border: 1px solid rgba(201, 133, 0, 0.24);
+  border-radius: var(--radius-sm);
+  padding: var(--s-2) var(--s-3);
+  line-height: 1.55;
+}
+
+.verdict__wellbeing {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--line-faint);
+}
+.verdict__wellbeing .num {
+  font-size: var(--text-md);
+}
+.verdict__wellbeing .is-good {
+  color: var(--brand-bright);
+}
+.verdict__wellbeing .is-bad {
+  color: #f0a0a0;
+}
+
+/* -- Metric strip --------------------------------------------------------- */
+.results__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--s-3);
+  background: var(--surface-1);
+  border: 1px solid var(--line-faint);
+  border-radius: var(--radius-lg);
+  padding: var(--s-5);
+}
+.results__metric {
+  min-width: 0;
+}
+
+/* -- Panels --------------------------------------------------------------- */
+.results__panel {
+  overflow: visible;
+}
+.results__panel-inner {
+  padding: var(--s-5);
+}
+.results__toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--s-4);
+}
+
+.results__pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: var(--s-4);
+}
+
+/* -- Risk ----------------------------------------------------------------- */
+.results__risk {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--s-5);
+}
+.risk__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: var(--s-4);
+  padding-bottom: var(--s-2);
+  border-bottom: 1px solid var(--line-faint);
+}
+.risk__swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  flex: none;
+}
+.risk__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-4);
+}
+
+/* -- Footer --------------------------------------------------------------- */
+.results__footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s-6);
+  align-items: start;
+  margin-top: var(--s-5);
+  padding-top: var(--s-6);
+  border-top: 1px solid var(--line-faint);
+}
+@media (max-width: 780px) {
+  .results__footer {
+    grid-template-columns: 1fr;
+  }
+}
+.results__footer .prose {
+  font-size: var(--text-sm);
+  margin-top: var(--s-3);
+}
+.results__provenance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}

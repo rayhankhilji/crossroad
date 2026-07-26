@@ -19,7 +19,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useMemo, useState } from 'react';
 
 import type { ArchetypeShare } from '../../engine/archetypes';
-import { branchColour, Figure, TONE_COLOURS, useSize } from './kit';
+import { branchPalette, Figure, TONE_COLOURS, useSize } from './kit';
 
 export interface TreeBranch {
   branchId: string;
@@ -79,6 +79,11 @@ export function DecisionTree({
   const branchX = rootX + rootWidth + gap;
   const leafX = branchX + branchWidth + gap;
 
+  const palette = useMemo(
+    () => branchPalette(branches.map((b) => b.branchId), baselineId),
+    [branches, baselineId],
+  );
+
   const { nodes, ribbons } = useMemo(() => {
     const nodes: NodeBox[] = [];
     const ribbons: Ribbon[] = [];
@@ -102,7 +107,7 @@ export function DecisionTree({
 
     branches.forEach((branch, bi) => {
       const branchY = padding.top + bi * (branchHeight + branchGap);
-      const colour = branchColour(branch.branchId, baselineId, bi);
+      const colour = palette[branch.branchId];
 
       nodes.push({
         key: `branch-${branch.branchId}`,
@@ -199,7 +204,7 @@ export function DecisionTree({
     });
 
     return { nodes, ribbons };
-  }, [branches, baselineId, plotHeight, rootX, branchX, leafX, rootWidth, branchWidth, leafWidth, padding.top, format]);
+  }, [branches, palette, plotHeight, rootX, branchX, leafX, rootWidth, branchWidth, leafWidth, padding.top, format]);
 
   const hoveredNode = nodes.find((n) => n.key === hovered);
 
@@ -237,21 +242,15 @@ export function DecisionTree({
     >
       <div ref={ref} className="chart-surface tree">
         <svg width="100%" height={height} role="img" aria-label={`Decision tree for: ${question}`}>
-          <defs>
-            <clipPath id="tree-reveal">
-              <motion.rect
-                x={0}
-                y={0}
-                height={height}
-                initial={{ width: 0 }}
-                animate={{ width }}
-                transition={{ duration: 1.15, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-              />
-            </clipPath>
-          </defs>
-
-          <g clipPath="url(#tree-reveal)">
-            {ribbons.map((ribbon) => {
+          {/*
+            The ribbons fade in individually rather than being revealed behind
+            a sweeping clip path. A clip is prettier for about a second and has
+            a nasty failure mode: if the animation is interrupted — a throttled
+            background tab, a slow frame — half the chart is simply not there.
+            A fade that stalls leaves the data drawn, just faint.
+          */}
+          <g>
+            {ribbons.map((ribbon, ri) => {
               const dim = hovered !== null && hoveredNode?.archetypeId !== undefined
                 ? !(ribbon.archetypeId === hoveredNode.archetypeId && ribbon.branchId === hoveredNode.branchId)
                 : hovered !== null && hoveredNode?.branchId
@@ -264,7 +263,11 @@ export function DecisionTree({
                   fill={ribbon.colour}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: dim ? 0.06 : ribbon.opacity }}
-                  transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                  transition={{
+                    duration: 0.45,
+                    ease: [0.22, 1, 0.36, 1],
+                    delay: hovered ? 0 : Math.min(0.7, ri * 0.035),
+                  }}
                 />
               );
             })}

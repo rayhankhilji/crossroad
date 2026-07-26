@@ -1,0 +1,300 @@
+.twin {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: var(--s-7) var(--s-5) var(--s-9);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  position: relative;
+  z-index: 1;
+}
+
+.twin__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-5);
+  flex-wrap: wrap;
+  margin-bottom: var(--s-2);
+}
+.twin__title {
+  font-size: var(--text-2xl);
+  margin: var(--s-2) 0 var(--s-2);
+}
+.twin__subtitle {
+  font-size: var(--text-md);
+  color: var(--ink-secondary);
+}
+.twin__header-actions {
+  display: flex;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+}
+
+/* -- Gaps ----------------------------------------------------------------- */
+.twin__gaps {
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  padding: var(--s-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.twin__gaps-head {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  line-height: 1.6;
+}
+.twin__gaps-head strong {
+  color: var(--ink);
+  font-weight: 550;
+}
+.twin__gaps-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+.twin__gaps-list button {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--ink-secondary);
+  font-size: var(--text-xs);
+  padding: 3px 9px;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), color 0.15s var(--ease);
+}
+.twin__gaps-list button:hover {
+  border-color: var(--brand-line);
+  color: var(--brand-bright);
+}
+
+/* -- Derived -------------------------------------------------------------- */
+.twin__derived {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--s-5);
+}
+
+/* -- Columns -------------------------------------------------------------- */
+.twin__columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--s-4);
+  align-items: start;
+}
+
+/* -- Traits --------------------------------------------------------------- */
+.twin__traits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+.twin__trait-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: var(--text-sm);
+  color: var(--ink);
+  margin-bottom: 5px;
+}
+.twin__trait-head .num {
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+}
+.twin__trait-track {
+  position: relative;
+  height: 4px;
+  background: var(--surface-3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.twin__trait-fill {
+  height: 100%;
+  background: var(--brand);
+  border-radius: 2px;
+}
+.twin__trait-mid {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--surface-0);
+  opacity: 0.7;
+}
+.twin__trait-poles {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--ink-faint);
+  line-height: 1.4;
+}
+.twin__trait-poles span:last-child {
+  text-align: right;
+}
+
+.twin__dials {
+  margin-top: var(--s-5);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line-faint);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-2) var(--s-4);
+}
+.twin__dial {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s-2);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+.twin__dial .num {
+  color: var(--ink);
+  font-size: var(--text-sm);
+}
+
+.twin__cognition {
+  margin-top: var(--s-4);
+  padding-top: var(--s-4);
+  border-top: 1px solid var(--line-faint);
+}
+.twin__cognition p {
+  margin-top: var(--s-2);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  line-height: 1.65;
+}
+
+/* -- Values --------------------------------------------------------------- */
+.twin__values-note {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  line-height: 1.65;
+  margin-bottom: var(--s-4);
+}
+.twin__values {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.twin__values li {
+  display: grid;
+  grid-template-columns: 18px minmax(80px, 1.1fr) minmax(60px, 2fr) 46px;
+  align-items: center;
+  gap: var(--s-3);
+}
+.twin__value-rank {
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+}
+.twin__value-label {
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+.twin__value-bar {
+  height: 4px;
+  background: var(--surface-3);
+  border-radius: 2px;
+  overflow: hidden;
+  display: block;
+}
+.twin__value-bar span {
+  display: block;
+  height: 100%;
+  background: var(--series-3);
+  border-radius: 2px;
+}
+.twin__value-weight {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  text-align: right;
+}
+
+/* -- Facts ---------------------------------------------------------------- */
+.twin__facts {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+.twin__facts > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s-3);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line-faint);
+}
+.twin__facts > div:last-child {
+  border-bottom: none;
+}
+.twin__facts dt {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+.twin__facts dd {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink);
+  text-align: right;
+}
+
+/* -- Skills --------------------------------------------------------------- */
+.twin__skills {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--s-4);
+}
+.twin__skill-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: var(--text-sm);
+  color: var(--ink);
+  margin-bottom: 5px;
+}
+.twin__skill-head .num {
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+}
+.twin__skill-track {
+  height: 4px;
+  background: var(--surface-3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.twin__skill-track div {
+  height: 100%;
+  background: var(--series-1);
+  border-radius: 2px;
+}
+.twin__skill-market {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+}
+
+/* -- Footer --------------------------------------------------------------- */
+.twin__footer {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-5);
+  flex-wrap: wrap;
+  margin-top: var(--s-4);
+  padding-top: var(--s-5);
+  border-top: 1px solid var(--line-faint);
+}
+.twin__footer .prose {
+  font-size: var(--text-sm);
+  flex: 1;
+  min-width: 260px;
+}

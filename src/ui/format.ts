@@ -140,3 +140,13 @@ export const INVERTED_METRICS = new Set(['stress']);
 export function isGood(metric: string, delta: number): boolean {
   return INVERTED_METRICS.has(metric) ? delta < 0 : delta > 0;
 }
+
+/**
+ * The engine reports win rate as "fraction of paired worlds where this branch
+ * scored higher". For stress, higher is worse — so the share of worlds where
+ * you are *better off* is the complement. Without this, a branch that raises
+ * stress in 94% of futures reads as "better in 94% of worlds".
+ */
+export function betterRate(metric: string, winRate: number): number {
+  return INVERTED_METRICS.has(metric) ? 1 - winRate : winRate;
+}

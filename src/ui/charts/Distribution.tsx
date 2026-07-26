@@ -10,7 +10,7 @@
 import { useState } from 'react';
 
 import type { HistogramBin, Summary } from '../../engine/stats';
-import { branchColour, Figure, linearScale, Tooltip, useSize, XAxis, type LegendItem } from './kit';
+import { branchPalette, Figure, linearScale, Tooltip, useSize, XAxis, type LegendItem } from './kit';
 
 export interface DistributionSeries {
   branchId: string;
@@ -43,6 +43,7 @@ export function DistributionChart({
   const plotHeight = height - margin.top - margin.bottom;
 
   const bins = series[0]?.bins ?? [];
+  const palette = branchPalette(series.map((s) => s.branchId), baselineId);
   if (bins.length === 0) return null;
 
   const xDomain: [number, number] = [bins[0].from, bins[bins.length - 1].to];
@@ -50,9 +51,9 @@ export function DistributionChart({
   const maxShare = Math.max(...series.flatMap((s) => s.bins.map((b) => b.share)), 0.001);
   const y = linearScale([0, maxShare], [margin.top + plotHeight, margin.top]);
 
-  const legend: LegendItem[] = series.map((s, i) => ({
+  const legend: LegendItem[] = series.map((s) => ({
     label: s.label,
-    colour: branchColour(s.branchId, baselineId, i),
+    colour: palette[s.branchId],
     value: `median ${format(s.summary.median)}`,
   }));
 
@@ -104,8 +105,8 @@ export function DistributionChart({
     >
       <div ref={ref} className="chart-surface">
         <svg width="100%" height={height} role="img" aria-label={title}>
-          {series.map((s, i) => {
-            const colour = branchColour(s.branchId, baselineId, i);
+          {series.map((s) => {
+            const colour = palette[s.branchId];
             return (
               <g key={s.branchId}>
                 <path d={stepPath(s.bins)} fill={colour} opacity={0.14} />
@@ -116,7 +117,7 @@ export function DistributionChart({
 
           {/* Percentile rails: median as a solid tick, quartiles as a bar. */}
           {series.map((s, i) => {
-            const colour = branchColour(s.branchId, baselineId, i);
+            const colour = palette[s.branchId];
             const railY = margin.top + plotHeight + 12 + i * 11;
             return (
               <g key={`${s.branchId}-rail`}>
@@ -185,9 +186,9 @@ export function DistributionChart({
             <div className="tooltip__head">
               {format(bins[hover.index].from)} – {format(bins[hover.index].to)}
             </div>
-            {series.map((s, i) => (
+            {series.map((s) => (
               <div key={s.branchId} className="tooltip__row">
-                <span className="tooltip__swatch" style={{ background: branchColour(s.branchId, baselineId, i) }} />
+                <span className="tooltip__swatch" style={{ background: palette[s.branchId] }} />
                 <span className="tooltip__label">{s.label}</span>
                 <span className="tooltip__value num">{(s.bins[hover.index].share * 100).toFixed(1)}%</span>
               </div>

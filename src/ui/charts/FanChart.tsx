@@ -16,7 +16,7 @@ import { useState } from 'react';
 import type { Band } from '../../engine/stats';
 import {
   areaPath,
-  branchColour,
+  branchPalette,
   Figure,
   HoverLayer,
   linePath,
@@ -41,7 +41,6 @@ export interface FanSeries {
 export function FanChart({
   series,
   baselineId,
-  metric,
   format,
   title,
   caption,
@@ -51,7 +50,6 @@ export function FanChart({
 }: {
   series: FanSeries[];
   baselineId: string;
-  metric: string;
   format: (value: number) => string;
   title: string;
   caption?: string;
@@ -69,6 +67,7 @@ export function FanChart({
   const plotHeight = height - margin.top - margin.bottom;
 
   const yearCount = series[0]?.bands.length ?? 0;
+  const palette = branchPalette(series.map((s) => s.branchId), baselineId);
   if (yearCount === 0) return null;
 
   // One shared y-domain across branches — comparing two fans on different
@@ -96,9 +95,9 @@ export function FanChart({
   const yTicks = useSymlog ? symlogTicks(domain) : ticksFor(domain, 5);
   const xTicks = ticksFor([0, yearCount - 1], Math.min(8, yearCount - 1)).filter((t) => Number.isInteger(t));
 
-  const legend: LegendItem[] = series.map((s, i) => ({
+  const legend: LegendItem[] = series.map((s) => ({
     label: s.label,
-    colour: branchColour(s.branchId, baselineId, i),
+    colour: palette[s.branchId],
     value: hover ? format(s.bands[hover.index]?.median ?? 0) : undefined,
   }));
 
@@ -171,8 +170,8 @@ export function FanChart({
             </g>
           )}
 
-          {series.map((s, i) => {
-            const colour = branchColour(s.branchId, baselineId, i);
+          {series.map((s) => {
+            const colour = palette[s.branchId];
             return (
               <g key={s.branchId}>
                 <path
@@ -206,13 +205,13 @@ export function FanChart({
                 y1={margin.top}
                 y2={margin.top + plotHeight}
               />
-              {series.map((s, i) => (
+              {series.map((s) => (
                 <circle
                   key={s.branchId}
                   cx={x(hover.index)}
                   cy={y(s.bands[hover.index].median)}
                   r={4}
-                  fill={branchColour(s.branchId, baselineId, i)}
+                  fill={palette[s.branchId]}
                   stroke="var(--surface-0)"
                   strokeWidth={2}
                 />
@@ -243,11 +242,11 @@ export function FanChart({
             <div className="tooltip__head">
               {hover.index === 0 ? 'Today' : `In ${hover.index} year${hover.index === 1 ? '' : 's'}`}
             </div>
-            {series.map((s, i) => {
+            {series.map((s) => {
               const band = s.bands[hover.index];
               return (
                 <div key={s.branchId} className="tooltip__row">
-                  <span className="tooltip__swatch" style={{ background: branchColour(s.branchId, baselineId, i) }} />
+                  <span className="tooltip__swatch" style={{ background: palette[s.branchId] }} />
                   <span className="tooltip__label">{s.label}</span>
                   <span className="tooltip__value num">{format(band.median)}</span>
                 </div>

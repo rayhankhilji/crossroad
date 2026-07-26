@@ -1,0 +1,171 @@
+.app {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.app__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.screen {
+  animation: screen-in 0.24s var(--ease) both;
+}
+@keyframes screen-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* -- Top bar -------------------------------------------------------------- */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--s-5);
+  padding: var(--s-3) var(--s-5);
+  background: color-mix(in srgb, var(--surface-0) 82%, transparent);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border-bottom: 1px solid var(--line-faint);
+}
+
+.topbar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--brand-bright);
+  flex: none;
+}
+.mark {
+  width: 26px;
+  height: 26px;
+}
+.topbar__wordmark {
+  font-family: var(--font-display);
+  font-size: var(--text-md);
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+@media (max-width: 620px) {
+  .topbar__wordmark {
+    display: none;
+  }
+}
+
+.topbar__nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.topbar__nav::-webkit-scrollbar {
+  display: none;
+}
+
+.topbar__link {
+  position: relative;
+  background: none;
+  border: none;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  padding: 6px 11px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s var(--ease), background 0.15s var(--ease);
+}
+.topbar__link:hover {
+  color: var(--ink-secondary);
+  background: var(--surface-1);
+}
+.topbar__link.is-active {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+.topbar__pulse {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--brand-bright);
+  margin-left: 6px;
+  vertical-align: middle;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.topbar__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex: none;
+}
+
+.topbar__completeness {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+}
+.topbar__completeness:hover {
+  color: var(--ink-secondary);
+}
+/* A conic ring reading as a progress dial — cheaper than an SVG for one value. */
+.topbar__ring {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: conic-gradient(var(--brand) var(--filled), var(--surface-3) var(--filled));
+  position: relative;
+}
+.topbar__ring::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: var(--surface-0);
+}
+
+.topbar__local {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--ink-faint);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: help;
+}
+@media (max-width: 760px) {
+  .topbar__local {
+    display: none;
+  }
+}

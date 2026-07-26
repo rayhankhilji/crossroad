@@ -396,13 +396,41 @@ export const SERIES = [
 ];
 
 /**
- * Branch colours. The baseline is always slot 2 (orange) and the alternative
- * always slot 1 (blue), so the reader learns one mapping and it holds across
- * every chart and every question in the app.
+ * Branch colours.
+ *
+ * The baseline — "carry on as you are" — always takes orange, and alternatives
+ * take blue, then aqua, then the rest. The reader learns one mapping and it
+ * holds across every chart and every question in the app.
+ *
+ * Orange, blue and aqua are specifically the three slots that clear the
+ * all-pairs colour-vision gates rather than only the adjacent-pair ones, which
+ * matters here because branches genuinely can all touch: overlapping fans,
+ * ribbons landing side by side, swatches in a legend.
  */
-export function branchColour(branchId: string, baselineId: string, index: number): string {
-  if (branchId === baselineId) return 'var(--series-2)';
-  return SERIES[index === 0 ? 0 : Math.min(index, SERIES.length - 1)];
+const ALT_SERIES = [
+  'var(--series-1)', // blue
+  'var(--series-3)', // aqua
+  'var(--series-4)', // yellow
+  'var(--series-5)', // magenta
+  'var(--series-7)', // violet
+  'var(--series-8)', // red
+];
+
+export type BranchPalette = Record<string, string>;
+
+/**
+ * Build the whole mapping at once from the ordered branch list. Assigning by
+ * position within the full array does not work — the baseline occupies a slot
+ * without consuming one, so an alternative sitting after it would collide with
+ * the baseline's own colour.
+ */
+export function branchPalette(branchIds: string[], baselineId: string): BranchPalette {
+  const palette: BranchPalette = {};
+  let alt = 0;
+  for (const id of branchIds) {
+    palette[id] = id === baselineId ? 'var(--series-2)' : ALT_SERIES[alt++ % ALT_SERIES.length];
+  }
+  return palette;
 }
 
 export const TONE_COLOURS: Record<string, string> = {

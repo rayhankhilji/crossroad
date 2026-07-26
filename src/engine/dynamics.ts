@@ -1315,9 +1315,13 @@ function stepRelationships(s: SimState, ctx: SimContext): void {
     100,
   );
 
-  // Separation hazard rises sharply as quality falls, and is front-loaded in
-  // the first years of a partnership.
-  const qualityHazard = remap(s.relationshipQuality, 75, 25, 0, 0.22);
+  // Separation hazard rises sharply as quality falls. The reference point is
+  // set at the low end of "fine" rather than at "good": a couple sitting at
+  // typical quality should contribute nothing here, and only genuine
+  // deterioration should add hazard on top of the base rate. Anchoring it
+  // higher quietly turned an ordinary partnership into a coin flip over
+  // fifteen years, which swamped every other outcome in the results.
+  const qualityHazard = remap(s.relationshipQuality, 58, 20, 0, 0.2);
   const separationP = clamp(
     params['relationship.dissolutionRate'] +
       qualityHazard +
